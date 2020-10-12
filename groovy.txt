@@ -63,7 +63,8 @@ job("DevOpsTask6Job3")
     then
         :
     else
-    exit 1
+    cd /pythonscript
+    python3 mail.py
     fi
 	''')
       }
