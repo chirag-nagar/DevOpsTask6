@@ -1,0 +1,80 @@
+job("DevOpsTask6Job1"){
+  description("This is first job of groovy project")
+	scm {
+		github('chiragnagar1/DevOps-GroovyJob-task','master')
+	}
+     		
+	triggers {
+		scm("* * * * *")
+	}
+     steps {
+        shell('''
+        sudo mkdir -p  /DevOpsTask6
+        sudo cp -rvf * /DevOpsTask6
+		''')
+    }
+}
+job("DevOpsTask6Job2"){
+  description("This is second job of groovy project")
+	triggers {
+        upstream('DevOpsTask6Job1', 'SUCCESS')
+    }
+     steps {
+        shell('''
+		cd /DevOpsTask6
+		if ls | grep .html
+		then
+		if sudo kubectl get pods | grep htmldeployment
+		then
+		echo "Already Running"
+		else
+		sudo kubectl delete all --all
+		sudo kubectl run htmlpod --image=httpd
+		sleep 30
+		sudo kubectl web.html  htmlpod:/usr/local/apache2/htdocs
+		sudo kubectl expose pods htmlpod --type=NodePort --port=80
+		fi
+		elif ls| grep .php
+		then
+		if sudo kubectl get pods | grep phpdeployment
+		then
+		echo "Already Running"
+		else
+		sudo kubectl delete all --all
+		sudo kubectl run phppod --image=php:latest
+		sleep 30
+		sudo kubectl cp web.php php-pod:/usr/src/myapp
+		sudo kubectl expose pod php-pod --type=NodePort --port=80
+		fi
+		fi
+		''')
+    }
+}
+job("DevOpsTask6Job3")
+{
+	description("This is third job of groovy project")
+	triggers {
+        upstream('DevOpsTask6Job2', 'SUCCESS')
+    }
+	 steps {
+        shell('''
+    website_status=$(curl -o /dev/null -s -w "%{http_code}\n" http://192.168.56.101:80)
+    if [[ "$website_status" -eq 200 ]]
+    then
+        :
+    else
+    exit 1
+    fi
+	''')
+      }
+}
+
+buildPipelineView('Groovy project') {
+    filterBuildQueue()
+    filterExecutors()
+    title('Groovy Pipeline')
+    displayedBuilds(3)
+    selectedJob('Groovy 1')
+    alwaysAllowManualTrigger()
+    showPipelineParameters()
+    refreshFrequency(30)
